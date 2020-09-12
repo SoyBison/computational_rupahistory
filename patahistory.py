@@ -19,7 +19,6 @@ unclaimed = '#FFFFFF'
 class Hex():
     def __init__(self, color):
         self.color = color
-
     
     def __repr__(self):
         return str(self.color)
@@ -34,6 +33,8 @@ class Grid():
         self.size = size
         self._directions = np.array(list(itertools.permutations((0, -1, 1))))
         self.grid = self.fresh_grid()
+        self.generate_neighbors()
+
 
     def __str__(self):
         return str(self.grid)
@@ -51,11 +52,15 @@ class Grid():
             raise KeyError(f'{(idx[0], idx[1], idx[2])} is not a valid hex coordinate. '
                             'x + y + z must equal zero.')
         return self.grid[idx[0], idx[1], idx[2]]
+    
+    def generate_neighbors(self):
+        self.neighbor_grid = {}
+        for cel in self.grid:
+            neighbors = self._directions + np.array(cel)
+            self.neighbor_grid[cel] = {tuple(n) for n in neighbors if tuple(n) in self.grid}
 
     def neighbors(self, idx):
-        neighbors = self._directions + np.array(idx)
-        neighbors = [self[tuple(n)] for n in neighbors if tuple(n) in self.grid]
-        return neighbors
+        return self.neighbor_grid[idx]
     
     def random_colors(self):
         for k in self.grid:
@@ -81,7 +86,7 @@ class Grid():
 
             for k in self.grid:
                 selfcolor = self.grid[k].color
-                neighbor_colors = np.array([n.color for n in self.neighbors(k)])
+                neighbor_colors = np.array([self.grid[n].color for n in self.neighbors(k)])
 
                 oceans = (neighbor_colors == 0).sum()
                 coasts = (neighbor_colors == 2).sum()
@@ -117,6 +122,7 @@ class Grid():
 
     def __eq__(self, other):
         return self.grid == other.grid
+
 
 
 def draw_map(grid, save=False, show=True):

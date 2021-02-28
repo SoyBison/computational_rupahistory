@@ -18,6 +18,9 @@ green = '#758E4F'
 ocean = '#33658A'
 coast = '#F9CB77'
 unclaimed = '#FFFFFF'
+hills = '#517664'
+deepocean = '#084C61'
+mountains = '#5F6D67'
 
 def hex_distance(c1, c2):
     return (abs(c1[0]-c2[0]) + abs(c1[1]-c2[1]) + abs(c1[2] - c2[2])) / 2
@@ -105,10 +108,10 @@ class Grid():
                 grid[(x, y, z)] = Hex(unclaimed)
         return grid
 
-    def land_and_water(self, water_coef=3, beach_coef=3, land_coef=.5, water_border=False):
+    def land_and_water(self, water_coef=3, beach_coef=3, land_coef=.4, mt_coef=0.1, water_border=False):
         for k in self.grid:
-            self[k].color = np.random.choice([green, ocean],
-                                                 p=[land_coef, 1-land_coef])
+            self[k].color = np.random.choice([green, mountains, ocean],
+                                                 p=[land_coef, mt_coef, 1 - mt_coef - land_coef])
         self.record = [Grid.from_grid(self.grid, self.size, self.wraparound)]
         def generate():
             new_grid = deepcopy(self.grid)
@@ -119,18 +122,40 @@ class Grid():
 
                 oceans = (neighbor_colors == ocean).sum()
                 coasts = (neighbor_colors == coast).sum()
+                plains = (neighbor_colors == green).sum()
+                peaks = (neighbor_colors == mountains).sum()
+                highlands = (neighbor_colors == hills).sum()
                 if len(neighbor_colors) != 6 and water_border:
                     new_grid[k].color = ocean
                 if selfcolor == green:
                     if oceans >= 1:
                         new_grid[k].color = coast
+                    if highlands > beach_coef:
+                        new_grid[k].color = hills
+                    if peaks >= 1:
+                        new_grid[k].color = hills
+                elif selfcolor == hills:
+                    if not (plains + oceans + coasts):
+                        new_grid[k].color = mountains
+                    if coasts >= 1:
+                        new_grid[k].color = green
+                elif selfcolor == mountains:
+                    if oceans >= 1:
+                        new_grid[k].color = coast
                 elif selfcolor == coast:
                     if oceans > beach_coef:
                         new_grid[k].color = ocean
-                    if not oceans:
+                    elif highlands >= 1:
                         new_grid[k].color = green
+                    elif peaks >= 1:
+                        new_grid[k].color = hills
+                    elif not oceans:
+                        new_grid[k].color = green
+
                 elif selfcolor == ocean:
                     if coasts > water_coef:
+                        new_grid[k].color = coast
+                    if highlands:
                         new_grid[k].color = coast
             if self.grid == new_grid:
                 self.grid = new_grid
@@ -138,9 +163,12 @@ class Grid():
                 self.grid = new_grid
                 generate()
 
-        generate()
-
-            
+        try:
+            generate()
+        except RecursionError:
+            print('Recursion Depths Plumbed, Map did not stabilize.')
+            pass
+                
     def land_init(self, land_coef=.5):
         for k in self.grid:
             self[k].color = np.random.choice([green, ocean],
@@ -231,10 +259,10 @@ def animate_landgen(grid):
 
 if __name__ == "__main__":
     tic = time.time()
-    grid = Grid(100)
+    grid = Grid(25, wraparound=False)
     toc1 = time.time()
     print(f'Generating the grid took {toc1 - tic}.')
-    grid.land_and_water()
+    grid.land_and_water(water_border=True)
     toc2 = time.time()
     print(f'Generating the land took {toc2 - toc1}.')
     ani = animate_landgen(grid)

@@ -108,19 +108,19 @@ class Grid():
                 grid[(x, y, z)] = Hex(unclaimed)
         return grid
 
-    def land_and_water(self, water_coef=3, beach_coef=3, land_coef=.4, mt_coef=0.1, water_border=False):
+    def land_and_water(self, water_coef=3, beach_coef=3, land_coef=.4, mt_coef=0.1, water_border=False, _time_limit=50):
         for k in self.grid:
             self[k].color = np.random.choice([green, mountains, ocean],
                                                  p=[land_coef, mt_coef, 1 - mt_coef - land_coef])
         self.record = [Grid.from_grid(self.grid, self.size, self.wraparound)]
-        def generate():
+        def generate(t=0):
             new_grid = deepcopy(self.grid)
             self.record.append(Grid.from_grid(new_grid, self.size, self.wraparound))
             for k in self.grid:
                 selfcolor = self.grid[k].color
                 neighbor_colors = np.array([self[n].color for n in self.neighbors(k)])
 
-                oceans = (neighbor_colors == ocean).sum()
+                oceans = (neighbor_colors == ocean).sum() 
                 coasts = (neighbor_colors == coast).sum()
                 plains = (neighbor_colors == green).sum()
                 peaks = (neighbor_colors == mountains).sum()
@@ -161,7 +161,9 @@ class Grid():
                 self.grid = new_grid
             else:
                 self.grid = new_grid
-                generate()
+                if t >= _time_limit:
+                    raise RecursionError
+                generate(t=t+1)
 
         try:
             generate()
